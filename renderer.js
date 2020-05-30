@@ -213,9 +213,7 @@ ipcRenderer.on('isShrinked', (event, path, sizeBefore, sizeAfter) => {
     const resContainer = document.createElement('div');
     resContainer.className = 'resLine';
     resContainer.innerHTML =
-        '<span>You saved ' +
-        percent +
-        '%. Your shrinked image is here:</span><br>';
+        '<span>文字入れ済みファイルはこちら</span><br>';
 
     // Create link
     let resElement = document.createElement('a');
@@ -235,7 +233,7 @@ ipcRenderer.on('isShrinked', (event, path, sizeBefore, sizeAfter) => {
     // Notification
     if (settings.get('notification'))
     {
-        new window.Notification('Image shrinked, pal!', {
+        new window.Notification('画像を変換しました!', {
             body: path,
             silent: true
         });
