@@ -14,6 +14,7 @@ const pngquant = require('pngquant-bin');
 const makeDir = require('make-dir');
 const { TouchBarButton } = TouchBar;
 const gifsicle = require('gifsicle');
+const jimp = require("jimp");
 
 global.debug = {
     devTools: 0
@@ -228,20 +229,6 @@ const processFile = (filePath, fileName) => {
 
         switch (path.extname(fileName).toLowerCase())
         {
-            case '.svg':
-            {
-                svg.optimize(data).then((result) => {
-                    fs.writeFile(newFile, result.data, (err) => {
-                        touchBarResult.label = 'Your shrinked image: ' +
-                            newFile;
-
-                        sendToRenderer(err, newFile, sizeOrig);
-                    });
-                }).catch((error) => {
-                    dialog(error.message);
-                });
-                break;
-            }
             case '.jpg':
             case '.jpeg':
             {
@@ -256,40 +243,55 @@ const processFile = (filePath, fileName) => {
                     origFile = filePath;
                 }
 
-                execFile(mozjpeg, ['-outfile', newFile, origFile], (err) => {
+                const watermarkMarginPercentage = 5;
+                const watermarkFile = path.join(__dirname, 'assets/img/watermark.png')
+                Promise.all([
+                    jimp.read(origFile),
+                    jimp.read(watermarkFile)
+                ]).then(result => {
+                    const [image, watermark] = result;
+                    watermark.resize(320, jimp.AUTO);
+                    watermark.opacity(0.5);
+                    image.resize(320, jimp.AUTO);
 
+                    const watermarkPlaceCount = Math.round(image.bitmap.height / watermark.bitmap.height);
+
+                    return new Promise((resolve, reject) => {
+                        try {
+                            for (let i = 0; i < watermarkPlaceCount; i++) {
+                                const X = 0;
+                                const Y = image.bitmap.height - (watermarkPlaceCount * watermark.bitmap.height) + (watermark.bitmap.height * i)
+                                image.composite(watermark, X, Y, [
+                                    {
+                                        mode: jimp.BLEND_DESTINATION_OVER,
+                                        opacitySource: 1,
+                                        opacityDest: 1
+                                    }
+                                ]).write(newFile);
+                            }
+                            resolve(image);
+                        } catch(err) {
+                            reject(err);
+                        }
+
+                        resolve(image);
+                    });
+                }).then(() => {
+                    sendToRenderer(undefined, newFile, sizeOrig);
+                }).catch(err => {
+                    console.error(err);
+                    sendToRenderer(err, newFile, sizeOrig);
+                }).finally(() => {
                     /**  Delete tmp file **/
                     !addTmpFile || fs.unlinkSync(origFile);
-
-                    touchBarResult.label = 'Your shrinked image: ' + newFile;
-                    sendToRenderer(err, newFile, sizeOrig);
                 });
-
-                break;
-            }
-            case '.png':
-            {
-                execFile(pngquant, ['-fo', newFile, filePath], (err) => {
-                    touchBarResult.label = 'Your shrinked image: ' + newFile;
-                    sendToRenderer(err, newFile, sizeOrig);
-                });
-                break;
-            }
-            case '.gif':
-            {
-                execFile(gifsicle, ['-o', newFile, filePath, '-O=2', '-i'],
-                    err => {
-                        touchBarResult.label = 'Your shrinked image: ' +
-                            newFile;
-                        sendToRenderer(err, newFile, sizeOrig);
-                    });
                 break;
             }
             default:
                 mainWindow.webContents.send('error');
                 dialog.showMessageBoxSync({
                     'type': 'error',
-                    'message': 'Only PNG SVG, JPG and GIF allowed'
+                    'message': 'Only JPG allowed'
                 });
         }
     });
@@ -312,13 +314,13 @@ const generateNewPath = (pathName) => {
 
     if (settings.get('subfolder'))
     {
-        objPath.dir = objPath.dir + '/minified';
+        objPath.dir = objPath.dir + '/with-watermark';
     }
 
     makeDir.sync(objPath.dir);
 
     /** Suffix setting */
-    const suffix = settings.get('suffix') ? '.min' : '';
+    const suffix = settings.get('suffix') ? '.watermark' : '';
     objPath.base = objPath.name + suffix + objPath.ext;
 
     return path.format(objPath);

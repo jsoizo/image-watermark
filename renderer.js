@@ -66,7 +66,10 @@ if (userSetting.savepath)
 dragzone.onclick = () => {
     dialog.showOpenDialog(
         {
-            properties: ['openFile', 'multiSelections']
+            properties: ['openFile', 'multiSelections'],
+            filters: [
+                { name: 'Images', extensions: ['jpg', 'jpeg'] }
+            ],
         }).then(result => {
 
         if (result.canceled)
