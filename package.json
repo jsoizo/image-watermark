@@ -1,10 +1,10 @@
 {
-  "name": "image-with-remark",
+  "name": "image-with-watermark",
   "version": "1.6.1",
   "description": "Minify your images and graphics with just one drop",
   "main": "main.js",
-  "title": "Image With Remark",
-  "productName": "Image With Remark",
+  "title": "Image With Watermark",
+  "productName": "Image With Watermark",
   "icon": "build/icon.icns",
   "background": "test-background.png",
   "target": "mac",
