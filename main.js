@@ -250,9 +250,14 @@ const processFile = (filePath, fileName) => {
                     jimp.read(watermarkFile)
                 ]).then(result => {
                     const [image, watermark] = result;
-                    watermark.resize(320, jimp.AUTO);
+                    if (image.bitmap.height > image.bitmap.width) {
+                        image.resize(320, jimp.AUTO);
+                    } else {
+                        image.resize(jimp.AUTO, 320);
+                    }
+                    
+                    watermark.resize(image.bitmap.width, jimp.AUTO);
                     watermark.opacity(0.5);
-                    image.resize(320, jimp.AUTO);
 
                     const watermarkPlaceCount = Math.round(image.bitmap.height / watermark.bitmap.height);
 
