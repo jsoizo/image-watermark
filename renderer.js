@@ -68,7 +68,7 @@ dragzone.onclick = () => {
         {
             properties: ['openFile', 'multiSelections'],
             filters: [
-                { name: 'Images', extensions: ['jpg', 'jpeg'] }
+                { name: 'Images', extensions: ['jpg', 'jpeg', 'heic', 'heif'] }
             ],
         }).then(result => {
 

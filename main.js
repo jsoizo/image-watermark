@@ -14,6 +14,7 @@ const pngquant = require('pngquant-bin');
 const makeDir = require('make-dir');
 const { TouchBarButton } = TouchBar;
 const gifsicle = require('gifsicle');
+const heicConvert = require('heic-convert');
 const jimp = require("jimp");
 
 global.debug = {
@@ -217,7 +218,7 @@ const processFile = (filePath, fileName) => {
     let sizeOrig = getFileSize(filePath, false);
 
     /** Process image(s) */
-    fs.readFile(filePath, 'utf8', (err, data) => {
+    fs.readFile(filePath, 'utf8', async (err, data) => {
 
         if (err)
         {
@@ -227,20 +228,35 @@ const processFile = (filePath, fileName) => {
         app.addRecentDocument(filePath);
         const newFile = generateNewPath(filePath);
 
-        switch (path.extname(fileName).toLowerCase())
+        const extention = path.extname(fileName).toLowerCase()
+        switch (extention)
         {
+            case '.heic':
+            case '.heif':
             case '.jpg':
             case '.jpeg':
             {
+                const [isHEIC, _filePath] = (extention === '.heic' || extention === '.heif') ? [true, filePath + '.jpg'] : [false, filePath];
+
+                if (isHEIC) {
+                    const inputBuffer = fs.readFileSync(filePath);
+                    const outputBuffer = await heicConvert({
+                        buffer: inputBuffer, // the HEIC file buffer
+                        format: 'JPEG',      // output format
+                        quality: 1           // the jpeg compression quality, between 0 and 1
+                    });
+                    fs.writeFileSync(_filePath, outputBuffer);
+                }
+
                 /**  Create temp file from original, see #54 **/
                 let origFile;
                 let addTmpFile = !settings.get('suffix') && !settings.get('subfolder');
 
                 if (addTmpFile) {
                     origFile = newFile + '.tmp';
-                    fs.copyFileSync(filePath, origFile);
+                    fs.copyFileSync(_filePath, origFile);
                 }else {
-                    origFile = filePath;
+                    origFile = _filePath;
                 }
 
                 const watermarkMarginPercentage = 5;
@@ -289,6 +305,7 @@ const processFile = (filePath, fileName) => {
                 }).finally(() => {
                     /**  Delete tmp file **/
                     !addTmpFile || fs.unlinkSync(origFile);
+                    !isHEIC || fs.unlinkSync(_filePath);
                 });
                 break;
             }
@@ -326,7 +343,8 @@ const generateNewPath = (pathName) => {
 
     /** Suffix setting */
     const suffix = settings.get('suffix') ? '.watermark' : '';
-    objPath.base = objPath.name + suffix + objPath.ext;
+    const newExt = (objPath.ext === '.heic', '.heif') ? '.jpg' : objPath.ext;
+    objPath.base = objPath.name + suffix + newExt;
 
     return path.format(objPath);
 };
